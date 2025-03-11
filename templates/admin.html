@@ -1,93 +1,98 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .media-container {
-            position: relative;
-            padding-top: 100%;
-            overflow: hidden;
-        }
-        .media-content {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .media-container { position: relative; padding-top: 100%; overflow: hidden; }
+    .media-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    /* Toast container for notifications */
+    #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; }
+  </style>
 </head>
 <body class="bg-gray-100">
-    <div class="container mx-auto px-4 py-8">
-        <div class="mb-4">
-            <a href="/" class="text-blue-500 hover:text-blue-700">← Back to Gallery</a>
-        </div>
-        <h1 class="text-3xl font-bold mb-6 text-gray-800">Media Management</h1>
-        <div class="bg-white rounded-lg shadow p-4">
-            {% if not media_files %}
-                <p class="text-gray-500 text-center py-8">No media files found</p>
-            {% else %}
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {% for media in media_files %}
-                    <div class="border rounded-lg p-3 hover:shadow-lg transition-shadow">
-                        <div class="media-container mb-2">
-                            {% if media.filename.split('.')[-1] in ['mp4', 'mov', 'avi'] %}
-                                <img src="{{ url_for('thumbnail_file', filename=media.filename.split('.')[0] + '.jpg') }}" 
-                                     class="media-content"
-                                     onerror="this.onerror=null;this.src='{{ url_for('serve_icon') }}'">
-                            {% else %}
-                                <img src="{{ url_for('thumbnail_file', filename=media.filename) }}" 
-                                     class="media-content"
-                                     onerror="this.onerror=null;this.src='{{ url_for('uploaded_file', filename=media.filename) }}'">
-                            {% endif %}
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <div class="text-sm text-gray-600">
-                                <div>{{ media.upload_time.strftime('%Y-%m-%d %H:%M') }}</div>
-                                <div class="text-xs opacity-75">
-                                    {{ media.filename if media.filename|length <= 20 else media.filename[:17] + '...' }}
-                                </div>
-                            </div>
-                            <button onclick="deleteMedia('{{ media.filename }}')" 
-                                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">
-                                Delete
-                            </button>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        </div>
-    </div>
+  <!-- Toast notifications -->
+  <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
-    <script>
-        async function deleteMedia(filename) {
-            if (confirm('Are you sure you want to delete this media file?')) {
-                try {
-                    const response = await fetch(`/delete/${encodeURIComponent(filename)}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': 'Basic ' + btoa('admin:secret')
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        const elem = document.querySelector(`[onclick*="${filename}"]`).closest('div.border');
-                        elem.parentNode.removeChild(elem);
-                    } else {
-                        const error = await response.json();
-                        alert(`Error: ${error.message}`);
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Error deleting media file');
-                }
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-4">
+      <a href="/" class="text-blue-500 hover:text-blue-700">← Back to Gallery</a>
+    </div>
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">Media Management</h1>
+    <div class="bg-white rounded-lg shadow p-4">
+      {% if not media_files %}
+      <p class="text-gray-500 text-center py-8">No media files found</p>
+      {% else %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for media in media_files %}
+        <div class="border rounded-lg p-3 hover:shadow-lg transition-shadow">
+          <div class="media-container mb-2">
+            {% if media.filename.split('.')[-1] in ['mp4', 'mov', 'avi'] %}
+            <img src="{{ url_for('thumbnail_file', filename=media.filename.split('.')[0] + '.jpg') }}"
+                 class="media-content" alt="Video thumbnail"
+                 onerror="this.onerror=null;this.src='{{ url_for('serve_icon') }}'">
+            {% else %}
+            <img src="{{ url_for('thumbnail_file', filename=media.filename) }}"
+                 class="media-content" alt="Image thumbnail"
+                 onerror="this.onerror=null;this.src='{{ url_for('uploaded_file', filename=media.filename) }}'">
+            {% endif %}
+          </div>
+          <div class="flex justify-between items-center">
+            <div class="text-sm text-gray-600">
+              <div>{{ media.upload_time.strftime('%Y-%m-%d %H:%M') }}</div>
+              <div class="text-xs opacity-75">
+                {{ media.filename if media.filename|length <= 20 else media.filename[:17] + '...' }}
+              </div>
+            </div>
+            <button onclick="deleteMedia('{{ media.filename }}')"
+                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">
+              Delete
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    // Reuse the same toast notification function
+    function showToast(message, type = 'info') {
+      const toastContainer = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+      toast.className = `px-4 py-2 rounded shadow ${bgColor} text-white`;
+      toast.textContent = message;
+      toastContainer.appendChild(toast);
+      setTimeout(() => { toast.remove(); }, 3000);
+    }
+
+    async function deleteMedia(filename) {
+      if (confirm('Are you sure you want to delete this media file?')) {
+        try {
+          const response = await fetch(`/delete/${encodeURIComponent(filename)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Basic ' + btoa('admin:secret') }
+          });
+          if (response.ok) {
+            const elem = document.querySelector(`[onclick*="${filename}"]`).closest('div.border');
+            if (elem) {
+              elem.remove();
+              showToast('Media deleted successfully!', 'success');
             }
+          } else {
+            const error = await response.json();
+            showToast(`Error: ${error.message}`, 'error');
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showToast('Error deleting media file', 'error');
         }
-    </script>
+      }
+    }
+  </script>
 </body>
 </html>
