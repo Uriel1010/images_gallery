@@ -13,7 +13,6 @@
     .icon-overlay { position: absolute; bottom: 8px; right: 8px; width: 20%; max-width: 64px; opacity: 0.8; mix-blend-mode: multiply; pointer-events: none; }
     .video-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40%; max-width: 64px; opacity: 0.8; filter: drop-shadow(0 0 8px rgba(0,0,0,0.5)); }
     .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: #3b82f6; transition: width 0.3s ease; }
-    /* Toast container for notifications */
     #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; }
   </style>
 </head>
@@ -21,12 +20,11 @@
   <div class="progress-bar" id="progressBar"></div>
   <!-- Toast notifications -->
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
-
   <div class="container mx-auto px-2 pb-24 lg:pb-16">
     <div id="gallery" class="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3 space-y-3 p-3">
       {% for media in media_files %}
       <div class="group relative rounded-xl shadow-lg overflow-hidden fade-in hover:shadow-xl transition-shadow duration-300">
-        <div class="media-container" role="button" tabindex="0">
+        <div class="media-container" role="button" tabindex="0" aria-label="View media">
           {% if media.split('.')[-1] in ['mp4', 'mov', 'avi'] %}
           <video class="media-content" playsinline muted preload="metadata">
             <source src="{{ url_for('uploaded_file', filename=media) }}" type="video/{{ media.split('.')[-1] }}">
@@ -35,7 +33,7 @@
           {% else %}
           <img src="{{ url_for('thumbnail_file', filename=media) }}"
                data-src="{{ url_for('uploaded_file', filename=media) }}"
-               class="media-content cursor-zoom-in" alt="Uploaded image" loading="lazy">
+               class="media-content cursor-zoom-in" alt="Uploaded media" loading="lazy">
           {% endif %}
           <img src="/icon.png" class="icon-overlay" alt="Overlay icon">
         </div>
@@ -43,10 +41,9 @@
       {% endfor %}
     </div>
   </div>
-
   <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm p-4 shadow-lg">
     <div class="max-w-2xl mx-auto flex gap-2">
-      <!-- Camera Input: accepts images only to trigger native camera -->
+      <!-- Camera Input (images only triggers native camera) -->
       <div class="md:hidden flex gap-2 flex-1">
         <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" multiple>
         <input type="file" id="galleryInput" accept="image/*,video/*" class="hidden" multiple>
@@ -69,7 +66,6 @@
       </div>
     </div>
   </div>
-
   <div id="lightbox" class="fixed inset-0 bg-black/90 hidden items-center justify-center p-4" role="dialog" aria-modal="true">
     <div class="relative w-full h-full">
       <video id="lightbox-video" class="hidden max-h-full max-w-full" controls>
@@ -82,22 +78,18 @@
       </button>
     </div>
   </div>
-
   <script>
     let lastUpdate = {{ media_files|length }};
     let uploadInProgress = false;
-
-    // Simple toast notification function
     function showToast(message, type = 'info') {
       const toastContainer = document.getElementById('toast-container');
       const toast = document.createElement('div');
       const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
-      toast.className = `px-4 py-2 rounded shadow ${bgColor} text-white`;
+      toast.className = `px-4 py-2 rounded shadow ${bgColor} text-white mb-2`;
       toast.textContent = message;
       toastContainer.appendChild(toast);
       setTimeout(() => { toast.remove(); }, 3000);
     }
-
     async function handleFiles(files) {
       if (uploadInProgress) return;
       uploadInProgress = true;
@@ -127,7 +119,6 @@
         uploadInProgress = false;
       }
     }
-
     function setupFileInput(inputId) {
       const input = document.getElementById(inputId);
       input.addEventListener('change', async () => {
@@ -137,7 +128,6 @@
         }
       });
     }
-
     function addNewMedia(filename, type) {
       const gallery = document.getElementById('gallery');
       const newItem = document.createElement('div');
@@ -151,14 +141,13 @@
              <img src="/icon.png" class="icon-overlay" alt="Overlay icon">
            </div>`
         : `<div class="media-container" role="button" tabindex="0">
-             <img src="/thumbnails/${filename}" data-src="/uploads/${filename}" class="media-content cursor-zoom-in" alt="Uploaded image" loading="lazy">
+             <img src="/thumbnails/${filename}" data-src="/uploads/${filename}" class="media-content cursor-zoom-in" alt="Uploaded media" loading="lazy">
              <img src="/icon.png" class="icon-overlay" alt="Overlay icon">
            </div>`;
       newItem.innerHTML = content;
       gallery.insertBefore(newItem, gallery.firstChild);
       newItem.querySelector('.media-container').addEventListener('click', openLightbox);
     }
-
     function openLightbox(event) {
       const target = event.target.closest('.media-container');
       const video = target?.querySelector('video');
@@ -174,7 +163,6 @@
       }
       document.getElementById('lightbox').style.display = 'flex';
     }
-
     function closeLightbox() {
       const lightboxVideo = document.getElementById('lightbox-video');
       lightboxVideo.pause();
@@ -182,19 +170,15 @@
       document.getElementById('lightbox-img').classList.add('hidden');
       document.getElementById('lightbox').style.display = 'none';
     }
-
-    // Close lightbox on Escape key press
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeLightbox();
     });
-
     document.querySelectorAll('#gallery .media-container').forEach(container => {
       container.addEventListener('click', openLightbox);
     });
     setupFileInput('cameraInput');
     setupFileInput('galleryInput');
     setupFileInput('fileInput');
-
     setInterval(async () => {
       try {
         const response = await fetch(`/updates?count=${lastUpdate}`);

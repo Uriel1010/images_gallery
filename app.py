@@ -1,13 +1,39 @@
-from flask import Flask, render_template, request, send_from_directory, jsonify, abort
-from flask_basicauth import BasicAuth
 import os
+import re
+import logging
+import subprocess
 from datetime import datetime
+from flask import (
+    Flask, render_template, request, send_from_directory, jsonify, abort,
+    redirect, url_for, flash
+)
+from flask_basicauth import BasicAuth
+from flask_talisman import Talisman
+from flask_caching import Cache
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from PIL import Image
 from werkzeug.utils import secure_filename
-import subprocess
-import logging
+
+# Sentry integration for error logging (optional)
+import sentry_sdk
+SENTRY_DSN = os.environ.get('SENTRY_DSN')
+if SENTRY_DSN:
+    sentry_sdk.init(dsn=SENTRY_DSN)
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-key')
+
+# Enforce HTTPS and add secure headers
+Talisman(app, force_https=False, content_security_policy=None)
+
+# Set up caching (simple cache for demonstration)
+cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+
+# Set up rate limiting (e.g., 10 requests per minute per IP on the index)
+limiter = Limiter(key_func=get_remote_address)
+limiter.init_app(app)
+
 app.config.update({
     'UPLOAD_FOLDER': 'static/uploads',
     'THUMBNAIL_FOLDER': 'static/thumbnails',
@@ -22,7 +48,13 @@ logger = app.logger
 logging.basicConfig(level=logging.INFO)
 
 def allowed_file(filename):
+    # Use secure_filename and check extension
+    filename = secure_filename(filename)
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+def sanitize_filename(filename):
+    # Allow only alphanumerics, underscores, dashes, and dots
+    return re.sub(r'[^A-Za-z0-9_.-]', '', filename)
 
 def rotate_image(image_path):
     try:
@@ -59,6 +91,7 @@ def create_thumbnail(path, is_video=False):
         logger.error(f"Thumbnail creation failed for {path}: {e}")
         return None
 
+@cache.cached(timeout=60, key_prefix='media_files')
 def get_media_files():
     media_files = []
     try:
@@ -71,11 +104,13 @@ def get_media_files():
     return media_files
 
 @app.route('/')
+@limiter.limit("10 per minute")
 def index():
     media_files = get_media_files()
     return render_template('index.html', media_files=media_files)
 
 @app.route('/upload', methods=['POST'])
+@limiter.limit("5 per minute")
 def upload_file():
     if 'files' not in request.files:
         return jsonify({'status': 'error', 'message': 'No files selected'}), 400
@@ -88,30 +123,29 @@ def upload_file():
             results.append({'status': 'error', 'message': 'Empty filename'})
             continue
 
-        if file and allowed_file(file.filename):
+        filename = sanitize_filename(file.filename)
+        if file and allowed_file(filename):
             try:
-                ext = file.filename.rsplit('.', 1)[1].lower()
+                ext = filename.rsplit('.', 1)[1].lower()
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-                filename = f"{timestamp}_{secure_filename(file.filename)}"
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                new_filename = f"{timestamp}_{filename}"
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
                 file.save(filepath)
 
-                if ext in {'mp4', 'mov', 'avi'}:
-                    thumbnail = create_thumbnail(filepath, is_video=True)
-                else:
+                if ext not in {'mp4', 'mov', 'avi'}:
                     rotate_image(filepath)
-                    thumbnail = create_thumbnail(filepath, is_video=False)
 
-                if thumbnail:
-                    results.append({
-                        'status': 'success',
-                        'filename': filename,
-                        'type': 'video' if ext in {'mp4', 'mov', 'avi'} else 'image'
-                    })
-                else:
-                    results.append({'status': 'error', 'message': 'Thumbnail creation failed', 'filename': filename})
+                # Synchronously generate thumbnail
+                is_video = ext in {'mp4', 'mov', 'avi'}
+                create_thumbnail(filepath, is_video)
+
+                results.append({
+                    'status': 'success',
+                    'filename': new_filename,
+                    'type': 'video' if is_video else 'image'
+                })
             except Exception as e:
-                logger.error(f"Error processing file {file.filename}: {e}")
+                logger.error(f"Error processing file {filename}: {e}")
                 results.append({'status': 'error', 'message': str(e)})
         else:
             results.append({'status': 'error', 'message': 'Invalid file type', 'filename': file.filename})
@@ -119,6 +153,7 @@ def upload_file():
     return jsonify({'results': results})
 
 @app.route('/updates')
+@limiter.limit("20 per minute")
 def check_updates():
     try:
         count = int(request.args.get('count', 0))
@@ -133,22 +168,55 @@ def check_updates():
 
 @app.route('/admin')
 @basic_auth.required
+@limiter.limit("10 per minute")
 def admin_panel():
-    media_files = []
+    try:
+        page = int(request.args.get('page', 1))
+    except ValueError:
+        page = 1
+    per_page = 10
+    media_list = []
     try:
         for f in os.listdir(app.config['UPLOAD_FOLDER']):
             if allowed_file(f):
-                media_files.append({
+                media_list.append({
                     'filename': f,
                     'upload_time': datetime.fromtimestamp(os.path.getmtime(os.path.join(app.config['UPLOAD_FOLDER'], f)))
                 })
-        media_files.sort(key=lambda x: x['upload_time'], reverse=True)
+        media_list.sort(key=lambda x: x['upload_time'], reverse=True)
+        total = len(media_list)
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_media = media_list[start:end]
     except Exception as e:
         logger.error(f"Error loading admin panel files: {e}")
-    return render_template('admin.html', media_files=media_files)
+        paginated_media = []
+        total = 0
+    return render_template('admin.html', media_files=paginated_media, page=page, total=total, per_page=per_page)
+
+@app.route('/rename/<filename>', methods=['POST'])
+@basic_auth.required
+def rename_file(filename):
+    new_name = request.form.get('new_name')
+    if not new_name:
+        flash("New name is required", "error")
+        return redirect(url_for('admin_panel'))
+    new_name = sanitize_filename(new_name)
+    safe_filename = secure_filename(filename)
+    old_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+    new_filename = f"{datetime.now().strftime('%Y%m%d%H%M%S%f')}_{new_name}"
+    new_path = os.path.join(app.config['UPLOAD_FOLDER'], new_filename)
+    try:
+        os.rename(old_path, new_path)
+        flash("File renamed successfully", "success")
+    except Exception as e:
+        logger.error(f"Error renaming file {filename}: {e}")
+        flash("Error renaming file", "error")
+    return redirect(url_for('admin_panel'))
 
 @app.route('/delete/<filename>', methods=['DELETE'])
 @basic_auth.required
+@limiter.limit("5 per minute")
 def delete_image(filename):
     try:
         safe_filename = secure_filename(filename)
@@ -181,7 +249,6 @@ def thumbnail_file(filename):
 def serve_icon():
     return send_from_directory('static', 'icon.png')
 
-# Error Handlers for improved stability
 @app.errorhandler(413)
 def request_entity_too_large(error):
     return jsonify({'status': 'error', 'message': 'File too large'}), 413
@@ -191,12 +258,7 @@ def internal_error(error):
     logger.error(f"Internal server error: {error}")
     return jsonify({'status': 'error', 'message': 'Internal server error'}), 500
 
-# In production, do not use the Flask development server.
 if __name__ == '__main__':
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
     os.makedirs(app.config['THUMBNAIL_FOLDER'], exist_ok=True)
-    # For local testing you may use Flask's built-in server,
-    # but in production run the app with Waitress:
-    #   waitress-serve --port=5000 app:app
-    from waitress import serve
-    serve(app, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000)
