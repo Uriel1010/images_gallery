@@ -7,8 +7,13 @@ services:
     environment:
       - SECRET_KEY=your-secret-key
       - BASIC_AUTH_USERNAME=admin
-      - BASIC_AUTH_PASSWORD=secret
-      - SENTRY_DSN=  # leave empty or remove if not using Sentry
+      - BASIC_AUTH_PASSWORD=admin
+      - SENTRY_DSN=   # Leave empty if not using Sentry
+    # Mount volumes to persist uploaded files and thumbnails.
+    volumes:
+      - ./static/uploads:/app/static/uploads
+      - ./static/thumbnails:/app/static/thumbnails
+    restart: unless-stopped
     networks:
       - app-network
 

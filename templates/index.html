@@ -1,26 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Media Gallery</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
     .fade-in { animation: fadeIn 0.5s ease-out; }
     .media-container { position: relative; padding-top: 100%; overflow: hidden; }
     .media-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-    .icon-overlay { position: absolute; bottom: 8px; right: 8px; width: 20%; max-width: 64px; opacity: 0.8; mix-blend-mode: multiply; pointer-events: none; }
-    .video-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 40%; max-width: 64px; opacity: 0.8; filter: drop-shadow(0 0 8px rgba(0,0,0,0.5)); }
-    .progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: #3b82f6; transition: width 0.3s ease; }
-    #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; }
+    .icon-overlay {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      width: 20%;
+      max-width: 64px;
+      opacity: 0.8;
+      mix-blend-mode: multiply;
+      pointer-events: none;
+    }
+    .video-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40%;
+      max-width: 64px;
+      opacity: 0.8;
+      filter: drop-shadow(0 0 8px rgba(0,0,0,0.5));
+    }
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: #3b82f6;
+      transition: width 0.3s ease;
+    }
+    #toast-container {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      z-index: 50;
+    }
+    /* Gallery container for auto-scroll on desktop */
+    #gallery-container {
+      height: 100vh; /* Full viewport height */
+      overflow: hidden;
+      position: relative;
+    }
+    /* Auto scroll toggle button styling */
+    #autoScrollToggle {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 100;
+      background: rgba(55, 65, 81, 0.8); /* gray-700 with opacity */
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-purple-100 to-blue-100 min-h-screen">
   <div class="progress-bar" id="progressBar"></div>
-  <!-- Toast notifications -->
+  <!-- Toast notifications container -->
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
-  <div class="container mx-auto px-2 pb-24 lg:pb-16">
+  <!-- Auto Scroll Toggle (visible only on desktop) -->
+  <button id="autoScrollToggle" class="hidden md:block">Disable Auto Scroll</button>
+
+  <!-- Gallery container -->
+  <div id="gallery-container">
     <div id="gallery" class="columns-2 md:columns-3 lg:columns-4 xl:columns-5 gap-3 space-y-3 p-3">
       {% for media in media_files %}
       <div class="group relative rounded-xl shadow-lg overflow-hidden fade-in hover:shadow-xl transition-shadow duration-300">
@@ -29,24 +85,26 @@
           <video class="media-content" playsinline muted preload="metadata">
             <source src="{{ url_for('uploaded_file', filename=media) }}" type="video/{{ media.split('.')[-1] }}">
           </video>
-          <img src="/icon.png" class="video-icon" alt="Video icon">
+          <img src="/icon.png" class="video-icon" alt="Video icon" />
           {% else %}
           <img src="{{ url_for('thumbnail_file', filename=media) }}"
                data-src="{{ url_for('uploaded_file', filename=media) }}"
-               class="media-content cursor-zoom-in" alt="Uploaded media" loading="lazy">
+               class="media-content cursor-zoom-in" alt="Uploaded media" loading="lazy" />
           {% endif %}
-          <img src="/icon.png" class="icon-overlay" alt="Overlay icon">
+          <img src="/icon.png" class="icon-overlay" alt="Overlay icon" />
         </div>
       </div>
       {% endfor %}
     </div>
   </div>
+
+  <!-- File upload controls -->
   <div class="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-sm p-4 shadow-lg">
     <div class="max-w-2xl mx-auto flex gap-2">
-      <!-- Camera Input (images only triggers native camera) -->
+      <!-- Mobile file inputs: Camera and Gallery -->
       <div class="md:hidden flex gap-2 flex-1">
-        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" multiple>
-        <input type="file" id="galleryInput" accept="image/*,video/*" class="hidden" multiple>
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden" multiple />
+        <input type="file" id="galleryInput" accept="image/*,video/*" class="hidden" multiple />
         <button onclick="document.getElementById('cameraInput').click()"
                 class="flex-1 bg-blue-500 text-white px-4 py-3 rounded-lg hover:bg-blue-600 transition-colors">
           📸 Capture
@@ -58,7 +116,7 @@
       </div>
       <!-- Desktop file upload -->
       <div class="hidden md:flex w-full">
-        <input type="file" id="fileInput" accept="image/*,video/*" class="hidden" multiple>
+        <input type="file" id="fileInput" accept="image/*,video/*" class="hidden" multiple />
         <label for="fileInput"
                class="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white text-center px-6 py-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity">
           📤 Upload Media
@@ -66,21 +124,33 @@
       </div>
     </div>
   </div>
+
+  <!-- Lightbox for media preview -->
   <div id="lightbox" class="fixed inset-0 bg-black/90 hidden items-center justify-center p-4" role="dialog" aria-modal="true">
     <div class="relative w-full h-full">
       <video id="lightbox-video" class="hidden max-h-full max-w-full" controls>
         Your browser does not support the video tag.
       </video>
-      <img id="lightbox-img" class="hidden max-h-full max-w-full object-contain" alt="Expanded media view">
+      <img id="lightbox-img" class="hidden max-h-full max-w-full object-contain" alt="Expanded media view" />
       <button onclick="closeLightbox()"
               class="absolute top-4 right-4 text-white text-3xl hover:text-gray-300" aria-label="Close lightbox">
         &times;
       </button>
     </div>
   </div>
+
   <script>
     let lastUpdate = {{ media_files|length }};
     let uploadInProgress = false;
+    let autoScrollInterval;
+    let autoScrollEnabled = true;
+    const scrollSpeed = 1;      // pixels per iteration
+    const scrollInterval = 50;  // interval in milliseconds
+    const autoScrollToggle = document.getElementById('autoScrollToggle');
+    const container = document.getElementById('gallery-container');
+    const gallery = document.getElementById('gallery');
+
+    // Helper: Show toast notification.
     function showToast(message, type = 'info') {
       const toastContainer = document.getElementById('toast-container');
       const toast = document.createElement('div');
@@ -90,6 +160,8 @@
       toastContainer.appendChild(toast);
       setTimeout(() => { toast.remove(); }, 3000);
     }
+
+    // File upload handling.
     async function handleFiles(files) {
       if (uploadInProgress) return;
       uploadInProgress = true;
@@ -119,6 +191,8 @@
         uploadInProgress = false;
       }
     }
+
+    // Set up file input event listeners.
     function setupFileInput(inputId) {
       const input = document.getElementById(inputId);
       input.addEventListener('change', async () => {
@@ -128,8 +202,9 @@
         }
       });
     }
+
+    // Add new media item to gallery.
     function addNewMedia(filename, type) {
-      const gallery = document.getElementById('gallery');
       const newItem = document.createElement('div');
       newItem.className = 'group relative rounded-xl shadow-lg overflow-hidden fade-in hover:shadow-xl transition-shadow duration-300';
       const content = type === 'video'
@@ -145,9 +220,12 @@
              <img src="/icon.png" class="icon-overlay" alt="Overlay icon">
            </div>`;
       newItem.innerHTML = content;
+      // Prepend new item to gallery.
       gallery.insertBefore(newItem, gallery.firstChild);
       newItem.querySelector('.media-container').addEventListener('click', openLightbox);
     }
+
+    // Lightbox functions.
     function openLightbox(event) {
       const target = event.target.closest('.media-container');
       const video = target?.querySelector('video');
@@ -163,6 +241,7 @@
       }
       document.getElementById('lightbox').style.display = 'flex';
     }
+
     function closeLightbox() {
       const lightboxVideo = document.getElementById('lightbox-video');
       lightboxVideo.pause();
@@ -170,15 +249,57 @@
       document.getElementById('lightbox-img').classList.add('hidden');
       document.getElementById('lightbox').style.display = 'none';
     }
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeLightbox();
+
+    // Auto-scroll function for desktop.
+    function startAutoScroll() {
+      autoScrollInterval = setInterval(() => {
+        container.scrollTop += scrollSpeed;
+        // When scroll reaches the height of original gallery, reset.
+        if (container.scrollTop >= galleryOriginalHeight) {
+          container.scrollTop -= galleryOriginalHeight;
+        }
+      }, scrollInterval);
+    }
+
+    function stopAutoScroll() {
+      clearInterval(autoScrollInterval);
+    }
+
+    // Toggle auto-scroll button event.
+    autoScrollToggle.addEventListener('click', () => {
+      if (autoScrollEnabled) {
+        stopAutoScroll();
+        autoScrollToggle.textContent = "Enable Auto Scroll";
+        autoScrollEnabled = false;
+      } else {
+        startAutoScroll();
+        autoScrollToggle.textContent = "Disable Auto Scroll";
+        autoScrollEnabled = true;
+      }
     });
-    document.querySelectorAll('#gallery .media-container').forEach(container => {
-      container.addEventListener('click', openLightbox);
+
+    let galleryOriginalHeight = 0;
+    document.addEventListener('DOMContentLoaded', () => {
+      setupFileInput('cameraInput');
+      setupFileInput('galleryInput');
+      setupFileInput('fileInput');
+      document.querySelectorAll('#gallery .media-container').forEach(container => {
+        container.addEventListener('click', openLightbox);
+      });
+      
+      // For desktop view, duplicate gallery content for a seamless loop.
+      if (window.innerWidth >= 768) {
+        galleryOriginalHeight = gallery.offsetHeight;
+        gallery.innerHTML += gallery.innerHTML;
+        container.scrollTop = 0;
+        startAutoScroll();
+      } else {
+        // On mobile, ensure auto-scroll is off and hide the toggle button.
+        autoScrollToggle.classList.add('hidden');
+      }
     });
-    setupFileInput('cameraInput');
-    setupFileInput('galleryInput');
-    setupFileInput('fileInput');
+    
+    // Poll for new updates every 3 seconds.
     setInterval(async () => {
       try {
         const response = await fetch(`/updates?count=${lastUpdate}`);

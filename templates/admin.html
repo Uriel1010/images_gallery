@@ -6,12 +6,14 @@
   <title>Admin Panel</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
+    /* Styles for media containers */
     .media-container { position: relative; padding-top: 100%; overflow: hidden; }
     .media-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
     #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; }
   </style>
 </head>
 <body class="bg-gray-100">
+  <!-- Toast notification container -->
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
   <div class="container mx-auto px-4 py-8">
     <div class="mb-4">
@@ -22,6 +24,13 @@
       {% if not media_files %}
       <p class="text-gray-500 text-center py-8">No media files found</p>
       {% else %}
+      <!-- Download All Button -->
+      <div class="flex justify-end mb-4">
+        <a href="{{ url_for('download_all') }}" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors">
+          Download All as ZIP
+        </a>
+      </div>
+      <!-- Media Files Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {% for media in media_files %}
         <div class="border rounded-lg p-3 hover:shadow-lg transition-shadow">
@@ -36,21 +45,16 @@
                  onerror="this.onerror=null;this.src='{{ url_for('uploaded_file', filename=media.filename) }}'">
             {% endif %}
           </div>
-          <div class="flex flex-col sm:flex-row justify-between items-center">
-            <div class="text-sm text-gray-600 mb-2 sm:mb-0">
+          <div class="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+            <div class="text-sm text-gray-600">
               <div>{{ media.upload_time.strftime('%Y-%m-%d %H:%M') }}</div>
               <div class="text-xs opacity-75">
                 {{ media.filename if media.filename|length <= 20 else media.filename[:17] + '...' }}
               </div>
             </div>
-            <form action="{{ url_for('rename_file', filename=media.filename) }}" method="POST" class="flex gap-2 items-center">
-              <input type="text" name="new_name" placeholder="New name" class="border rounded px-2 py-1 text-sm" required>
-              <button type="submit" class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition-colors text-sm">
-                Rename
-              </button>
-            </form>
+            <!-- Delete button only, renaming option removed -->
             <button onclick="deleteMedia('{{ media.filename }}')"
-                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors">
+                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 transition-colors text-sm">
               Delete
             </button>
           </div>
@@ -77,29 +81,6 @@
       toast.textContent = message;
       toastContainer.appendChild(toast);
       setTimeout(() => { toast.remove(); }, 3000);
-    }
-    async function deleteMedia(filename) {
-      if (confirm('Are you sure you want to delete this media file?')) {
-        try {
-          const response = await fetch(`/delete/${encodeURIComponent(filename)}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': 'Basic ' + btoa('admin:secret') }
-          });
-          if (response.ok) {
-            const elem = document.querySelector(`[onclick*="${filename}"]`).closest('div.border');
-            if (elem) {
-              elem.remove();
-              showToast('Media deleted successfully!', 'success');
-            }
-          } else {
-            const error = await response.json();
-            showToast(`Error: ${error.message}`, 'error');
-          }
-        } catch (error) {
-          console.error('Error:', error);
-          showToast('Error deleting media file', 'error');
-        }
-      }
     }
   </script>
 </body>
