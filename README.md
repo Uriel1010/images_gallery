@@ -6,9 +6,8 @@ A Flask-based media gallery application that lets you upload images and videos, 
 
 - **Media Upload:** Upload images and videos via mobile or desktop.
 - **Thumbnail Generation:** Synchronously creates thumbnails using Pillow (for images) and ffmpeg (for videos).
-- **Continuous Auto-Scroll:** On desktop, the gallery auto-scrolls seamlessly (with a toggle to disable/enable auto-scroll).
-- **Responsive Design:** On mobile devices, the auto-scroll is disabled and the gallery displays normally.
-- **Admin Panel:** Manage uploaded files (delete) and download all media files as a ZIP archive.
+- **Continuous Auto-Scroll:** On desktop, the gallery auto-scrolls seamlessly (with a toggle to disable/enable auto-scroll). On mobile, auto-scroll is disabled to prevent duplicate images.
+- **Admin Panel:** Manage (delete) uploaded files and download all media files as a ZIP archive.
 - **Security Enhancements:** Basic HTTP authentication for admin routes, HTTPS enforcement via Flask-Talisman, and rate limiting.
 
 ## Requirements
@@ -44,7 +43,7 @@ A Flask-based media gallery application that lets you upload images and videos, 
 
 4. **Install ffmpeg**
 
-   Make sure ffmpeg is installed and available in your PATH. On Ubuntu, for example:
+   Make sure ffmpeg is installed and available in your PATH. For example, on Ubuntu:
 
    ```sh
    sudo apt update
@@ -76,27 +75,48 @@ The application reads configuration values from environment variables. Create a 
 
    Navigate to [http://localhost:5000/admin](http://localhost:5000/admin) and enter your admin credentials.
 
-## Running with Docker
+## Running with Docker Compose
 
-This project includes a Dockerfile and docker-compose configuration for containerized deployment.
+This project includes a `Dockerfile` and `docker-compose.yml` for containerized deployment. All the necessary files (such as `Dockerfile`, `docker-compose.yml`, `gunicorn_config.py`, and the source code) are included in the repository.
 
-1. **Build and Run Containers**
+### Steps to Deploy with Docker Compose
+
+1. **Clone the Repository from GitHub**
+
+   ```sh
+   git clone https://github.com/yourusername/media-gallery-app.git
+   cd media-gallery-app
+   ```
+
+2. **Build and Run the Docker Containers**
+
+   Use Docker Compose to build the image and start the container:
 
    ```sh
    docker-compose up --build
    ```
 
-2. **Access the App**
+   This command builds the Docker image according to the provided `Dockerfile` and starts the Flask app (with Gunicorn) on port 5000.
 
-   The app will be available at [http://localhost:5000](http://localhost:5000).
+3. **Access the Application**
 
-## File Structure
+   Open your browser and go to [http://localhost:5000](http://localhost:5000) to view the media gallery. The admin panel is accessible at [http://localhost:5000/admin](http://localhost:5000/admin).
+
+4. **Stopping the Application**
+
+   To stop the application, press `Ctrl+C` in the terminal or run:
+
+   ```sh
+   docker-compose down
+   ```
+
+### File Structure
 
 ```plaintext
 .
 ├── app.py                  # Main Flask application
 ├── docker-compose.yml      # Docker Compose configuration
-├── dockerfile              # Dockerfile for building the container image
+├── Dockerfile              # Dockerfile for building the container image
 ├── gunicorn_config.py      # Gunicorn configuration for production
 ├── requirements.txt        # Python dependencies
 ├── README.md               # Project documentation (this file)
@@ -109,7 +129,7 @@ This project includes a Dockerfile and docker-compose configuration for containe
 ## Customization & UI/UX
 
 - **Auto-Scroll Behavior:**  
-  On desktop, the gallery auto-scrolls continuously (billboard effect) with a toggle button to enable/disable this feature. On mobile, auto-scroll is disabled to prevent duplicated images.
+  On desktop, the gallery auto-scrolls continuously (billboard effect) with a toggle button to enable/disable this feature. On mobile devices, auto-scroll is disabled by default to avoid duplicate images.
 
 - **Admin Panel:**  
   The admin panel allows deletion of media files and downloading all files as a ZIP archive.
@@ -123,7 +143,7 @@ This project includes a Dockerfile and docker-compose configuration for containe
   Check that `ffmpeg` is installed and available in your PATH, and that image files are not corrupted.
 
 - **Auto-Scroll Issues:**  
-  The auto-scroll is enabled only on desktop (screens ≥768px). On mobile devices, the gallery will not auto-scroll and images will display only once.
+  Auto-scroll is enabled only on desktop (screens ≥768px). On mobile devices, the gallery will display without auto-scroll to prevent duplication.
 
 ## License
 
