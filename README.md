@@ -23,8 +23,8 @@ A Flask-based media gallery application that lets you upload images and videos, 
 1. **Clone the Repository**
 
    ```sh
-   git clone https://github.com/yourusername/media-gallery-app.git
-   cd media-gallery-app
+   git clone https://github.com/Uriel1010/images_gallery.git
+   cd images_gallery
    ```
 
 2. **Create and Activate a Virtual Environment**
@@ -84,8 +84,8 @@ This project includes a `Dockerfile` and `docker-compose.yml` for containerized 
 1. **Clone the Repository from GitHub**
 
    ```sh
-   git clone https://github.com/yourusername/media-gallery-app.git
-   cd media-gallery-app
+   git clone https://github.com/Uriel1010/images_gallery.git
+   cd images_gallery
    ```
 
 2. **Build and Run the Docker Containers**
