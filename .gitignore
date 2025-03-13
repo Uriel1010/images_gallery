@@ -20,7 +20,5 @@ Thumbs.db
 content.txt
 copy_files.py
 delete_static_folder.py
-icon.png
-static/icon.png
 static/thumbnails/*
 static/uploads/*
